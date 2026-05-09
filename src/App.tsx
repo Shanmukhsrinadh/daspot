@@ -248,22 +248,21 @@ function App() {
       </section>
 
       {/* FLIP MENU BOOK SECTION */}
-      <section id="menubook" className="py-32 px-6 bg-[#080808]">
+      <section id="menubook" className="py-32 bg-[#080808]">
         <motion.div
           initial="hidden"
           whileInView="visible"
           viewport={{ once: true, margin: "-80px" }}
           variants={staggerContainer}
-          className="container mx-auto"
         >
-          <motion.div variants={fadeInUp} className="text-center mb-16">
+          <motion.div variants={fadeInUp} className="text-center mb-16 px-6">
             <p className="text-primary tracking-[0.3em] text-xs font-bold mb-4">— BROWSE THE BOOK —</p>
             <h2 className="font-serif text-4xl md:text-5xl font-bold mb-4">The Menu Book</h2>
             <p className="font-serif italic text-muted-foreground text-lg">Turn the pages to explore our full collection</p>
             <div className="w-12 h-px bg-primary mx-auto mt-6" />
           </motion.div>
 
-          <motion.div variants={fadeInUp} className="flex justify-center">
+          <motion.div variants={fadeInUp} className="flex justify-center px-2">
             <FlipMenu />
           </motion.div>
         </motion.div>

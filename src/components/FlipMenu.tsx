@@ -192,14 +192,14 @@ function Page({ data, side }: { data: PageData; side: "L" | "R" }) {
         <div className="absolute bottom-0 left-0 right-0 h-[3px]"
           style={{ background: "linear-gradient(90deg,transparent,#ff2e2e,transparent)" }} />
         <img src="/da-spot-logo.jpeg" alt="DA SPOT"
-          className="w-[72px] h-[72px] rounded-full object-cover mb-5"
-          style={{ boxShadow: "0 0 32px rgba(255,46,46,0.35)", border: "1px solid rgba(255,46,46,0.3)" }} />
-        <p className="text-[#ff2e2e] tracking-[0.5em] text-[7px] font-sans mb-1">ESTD</p>
-        <h2 className="font-serif text-[28px] font-bold tracking-[0.15em] text-[#f5f0e8]">Da</h2>
-        <h1 className="font-serif text-[42px] font-bold tracking-[0.2em] text-[#f5f0e8] leading-none">SPOT</h1>
-        <div className="w-10 h-px bg-[#ff2e2e] my-4" />
-        <p className="text-[#f5f0e8]/35 text-[8px] tracking-[0.4em] font-sans uppercase">Menu Collection</p>
-        <p className="text-[#ff2e2e] text-[8px] tracking-[0.3em] font-sans mt-1">2024</p>
+          className="w-[110px] h-[110px] rounded-full object-cover mb-6"
+          style={{ boxShadow: "0 0 40px rgba(255,46,46,0.35)", border: "1px solid rgba(255,46,46,0.3)" }} />
+        <p className="text-[#ff2e2e] tracking-[0.5em] text-[11px] font-sans mb-1">ESTD</p>
+        <h2 className="font-serif text-[42px] font-bold tracking-[0.15em] text-[#f5f0e8]">Da</h2>
+        <h1 className="font-serif text-[64px] font-bold tracking-[0.2em] text-[#f5f0e8] leading-none">SPOT</h1>
+        <div className="w-14 h-px bg-[#ff2e2e] my-5" />
+        <p className="text-[#f5f0e8]/35 text-[11px] tracking-[0.4em] font-sans uppercase">Menu Collection</p>
+        <p className="text-[#ff2e2e] text-[11px] tracking-[0.3em] font-sans mt-2">2024</p>
       </div>
     );
   }
@@ -210,30 +210,30 @@ function Page({ data, side }: { data: PageData; side: "L" | "R" }) {
         style={{ background: "linear-gradient(210deg,#110000 0%,#0a0a0a 60%,#0d0000 100%)" }}>
         <div className="absolute inset-0 pointer-events-none"
           style={{ backgroundImage: "repeating-linear-gradient(-45deg,rgba(255,46,46,0.03) 0,rgba(255,46,46,0.03) 1px,transparent 0,transparent 50%)", backgroundSize: "18px 18px" }} />
-        <div className="w-6 h-px bg-[#ff2e2e] mb-5" />
-        <p className="font-serif italic text-[#f5f0e8]/40 text-[11px] leading-relaxed text-center px-8 mb-6">
+        <div className="w-10 h-px bg-[#ff2e2e] mb-6" />
+        <p className="font-serif italic text-[#f5f0e8]/40 text-[16px] leading-relaxed text-center px-10 mb-8">
           "Where every dish tells a story."
         </p>
-        <p className="text-[#ff2e2e] tracking-[0.45em] text-[7px] font-sans uppercase">DA SPOT</p>
-        <p className="text-[#f5f0e8]/25 tracking-[0.3em] text-[6px] font-sans mt-2">Est. 2024</p>
-        <div className="w-6 h-px bg-[#ff2e2e] mt-5" />
+        <p className="text-[#ff2e2e] tracking-[0.45em] text-[11px] font-sans uppercase">DA SPOT</p>
+        <p className="text-[#f5f0e8]/25 tracking-[0.3em] text-[10px] font-sans mt-2">Est. 2024</p>
+        <div className="w-10 h-px bg-[#ff2e2e] mt-6" />
       </div>
     );
   }
 
   if (data.kind === "welcome") {
     return (
-      <div className="w-full h-full flex flex-col justify-center px-8 py-10" style={{ background: bg }}>
-        <p className="text-[#ff2e2e] tracking-[0.4em] text-[7px] font-sans uppercase mb-4">— Welcome —</p>
-        <h3 className="font-serif text-[20px] font-bold text-[#f5f0e8] leading-snug mb-5">
+      <div className="w-full h-full flex flex-col justify-center px-12 py-12" style={{ background: bg }}>
+        <p className="text-[#ff2e2e] tracking-[0.4em] text-[11px] font-sans uppercase mb-5">— Welcome —</p>
+        <h3 className="font-serif text-[32px] font-bold text-[#f5f0e8] leading-snug mb-6">
           A Journey<br />Through Flavour
         </h3>
-        <div className="w-7 h-px bg-[#ff2e2e] mb-5" />
-        <p className="text-[#f5f0e8]/45 font-sans text-[10px] leading-relaxed">
+        <div className="w-10 h-px bg-[#ff2e2e] mb-6" />
+        <p className="text-[#f5f0e8]/45 font-sans text-[15px] leading-relaxed">
           Each dish at DA SPOT is crafted with precision and passion. From bold Asian starters to elegant mains — every plate is an experience.
         </p>
         <div className="mt-auto pt-6 border-t border-white/[0.04]">
-          <p className="text-[#f5f0e8]/20 text-[7px] tracking-[0.3em] uppercase font-sans">Wok to Fork</p>
+          <p className="text-[#f5f0e8]/20 text-[10px] tracking-[0.3em] uppercase font-sans">Wok to Fork</p>
         </div>
       </div>
     );
@@ -245,29 +245,29 @@ function Page({ data, side }: { data: PageData; side: "L" | "R" }) {
       : ["", data.categoryName ?? ""];
 
     return (
-      <div className="w-full h-full flex flex-col py-7 px-6" style={{ background: bg }}>
-        <div className="mb-4 pb-3" style={{ borderBottom: "1px solid rgba(255,46,46,0.12)" }}>
+      <div className="w-full h-full flex flex-col py-10 px-10" style={{ background: bg }}>
+        <div className="mb-5 pb-4" style={{ borderBottom: "1px solid rgba(255,46,46,0.12)" }}>
           {section && (
-            <p className="text-[#ff2e2e] tracking-[0.35em] text-[6px] font-sans uppercase mb-[3px]">
+            <p className="text-[#ff2e2e] tracking-[0.35em] text-[10px] font-sans uppercase mb-1">
               {section}
             </p>
           )}
-          <h3 className="font-serif text-[15px] font-bold text-[#f5f0e8] leading-tight">{title || section}</h3>
+          <h3 className="font-serif text-[22px] font-bold text-[#f5f0e8] leading-tight">{title || section}</h3>
         </div>
 
-        <div className="flex-1 flex flex-col gap-[14px] overflow-hidden">
+        <div className="flex-1 flex flex-col gap-[18px] overflow-hidden">
           {data.items.map((item, i) => (
             <div key={i}>
-              <div className="flex items-center gap-1">
-                <span className="font-serif text-[11.5px] text-[#f5f0e8] flex-1 leading-tight pr-1">
+              <div className="flex items-center gap-2">
+                <span className="font-serif text-[16px] text-[#f5f0e8] flex-1 leading-tight pr-2">
                   {item.name}
                 </span>
-                <span className="shrink-0 text-[#ff2e2e] font-serif text-[10.5px] font-medium">
+                <span className="shrink-0 text-[#ff2e2e] font-serif text-[15px] font-medium">
                   {fmtPrice(item.price)}
                 </span>
               </div>
               {item.description && (
-                <p className="text-[8.5px] text-[#f5f0e8]/30 font-sans mt-[1px] leading-relaxed line-clamp-1">
+                <p className="text-[12px] text-[#f5f0e8]/35 font-sans mt-1 leading-relaxed line-clamp-1">
                   {item.description}
                 </p>
               )}
@@ -275,11 +275,11 @@ function Page({ data, side }: { data: PageData; side: "L" | "R" }) {
           ))}
         </div>
 
-        <div className="mt-3 pt-3 flex items-center justify-between" style={{ borderTop: "1px solid rgba(255,255,255,0.04)" }}>
-          <span className="text-[6px] tracking-[0.3em] text-[#f5f0e8]/15 font-sans uppercase">DA SPOT</span>
-          <div className="flex gap-[3px]">
+        <div className="mt-4 pt-4 flex items-center justify-between" style={{ borderTop: "1px solid rgba(255,255,255,0.04)" }}>
+          <span className="text-[10px] tracking-[0.3em] text-[#f5f0e8]/15 font-sans uppercase">DA SPOT</span>
+          <div className="flex gap-[4px]">
             {[0.25, 0.5, 0.25].map((o, i) => (
-              <div key={i} className="w-[5px] h-[5px] rounded-full" style={{ background: `rgba(255,46,46,${o})` }} />
+              <div key={i} className="w-[6px] h-[6px] rounded-full" style={{ background: `rgba(255,46,46,${o})` }} />
             ))}
           </div>
         </div>
@@ -414,8 +414,8 @@ export function FlipMenu() {
         <div
           className="relative overflow-hidden"
           style={{
-            width: "min(700px, 95vw)",
-            height: "min(480px, 66vw)",
+            width: "min(1100px, 96vw)",
+            height: "min(680px, 62vw)",
             boxShadow: "0 40px 100px rgba(0,0,0,0.85), 0 0 0 1px rgba(255,255,255,0.04)",
           }}
         >
