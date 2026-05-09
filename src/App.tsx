@@ -46,12 +46,18 @@ const gallery = [
   "/gallery-6.png"
 ];
 
+const TIME_SLOTS = {
+  Lunch: ["12:00 PM", "1:00 PM", "2:00 PM", "3:00 PM"],
+  Dinner: ["6:00 PM", "7:00 PM", "8:00 PM", "9:00 PM", "10:00 PM"],
+};
+
 const formSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters."),
   email: z.string().email("Please enter a valid email address."),
   phone: z.string().min(10, "Phone must be at least 10 digits."),
   guests: z.coerce.number().min(1, "At least 1 guest.").max(10, "Maximum 10 guests."),
   date: z.string().min(1, "Please select a date."),
+  time: z.string().min(1, "Please select a time slot."),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -88,6 +94,7 @@ function App() {
       phone: "",
       guests: 2,
       date: "",
+      time: "",
     },
   });
 
@@ -109,6 +116,7 @@ function App() {
               month: "long",
               day: "numeric",
             }),
+            reservation_time: values.time,
           },
           EMAILJS_PUBLIC_KEY
         );
@@ -436,6 +444,42 @@ function App() {
                   )}
                 />
               </div>
+
+              {/* TIME SLOT PICKER */}
+              <FormField
+                control={form.control}
+                name="time"
+                render={({ field }) => (
+                  <FormItem>
+                    <div className="pt-2 space-y-4">
+                      {(Object.entries(TIME_SLOTS) as [string, string[]][]).map(([period, slots]) => (
+                        <div key={period}>
+                          <p className="text-[10px] tracking-[0.3em] uppercase text-muted-foreground/60 mb-3">
+                            — {period} —
+                          </p>
+                          <div className="flex flex-wrap gap-2">
+                            {slots.map((slot) => (
+                              <button
+                                key={slot}
+                                type="button"
+                                onClick={() => field.onChange(slot)}
+                                className={`px-4 py-2 text-sm tracking-widest border transition-all duration-200 ${
+                                  field.value === slot
+                                    ? "border-primary bg-primary text-white shadow-[0_0_12px_rgba(255,46,46,0.4)]"
+                                    : "border-border text-muted-foreground hover:border-primary/60 hover:text-primary"
+                                }`}
+                              >
+                                {slot}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <FormMessage className="pt-1" />
+                  </FormItem>
+                )}
+              />
 
               <Button
                 type="submit"
