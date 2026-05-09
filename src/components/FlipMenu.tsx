@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { useAnimation, motion } from "framer-motion";
+import { useAnimation, motion, AnimatePresence } from "framer-motion";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 /* ─── DATA ──────────────────────────────────────────────────── */
@@ -174,7 +174,8 @@ function buildSpreads(pages: PageData[]): [PageData, PageData][] {
   return out;
 }
 
-const spreads = buildSpreads(buildPages());
+const allPages = buildPages();
+const spreads = buildSpreads(allPages);
 
 /* ─── PAGE RENDERER ─────────────────────────────────────────── */
 
@@ -295,111 +296,230 @@ function Page({ data, side }: { data: PageData; side: "L" | "R" }) {
 const FLIP_DURATION = 1.5;
 const EASE: [number, number, number, number] = [0.22, 0.61, 0.36, 1];
 
+/* ─── MOBILE SLIDE VARIANTS ─────────────────────────────────── */
+const mobileVariants = {
+  enter: (dir: number) => ({ x: dir > 0 ? "100%" : "-100%", opacity: 0 }),
+  center: { x: 0, opacity: 1 },
+  exit:  (dir: number) => ({ x: dir > 0 ? "-100%" : "100%", opacity: 0 }),
+};
+
 export function FlipMenu() {
+  /* ── ALL HOOKS FIRST (Rules of Hooks) ── */
+
+  /* mobile detection */
+  const [isMobile, setIsMobile] = useState(
+    () => typeof window !== "undefined" && window.innerWidth < 768
+  );
+  useEffect(() => {
+    const onResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+
+  /* mobile single-page state */
+  const [mobilePageIndex, setMobilePageIndex] = useState(0);
+  const [mobileDir, setMobileDir] = useState(1);
+  const totalPages = allPages.length;
+  const mobileTouchX = useRef<number | null>(null);
+
+  /* desktop two-page spread state */
   const [spreadIndex, setSpreadIndex] = useState(0);
   const [isFlipping, setIsFlipping] = useState(false);
   const [flipDir, setFlipDir] = useState<"fwd" | "bwd">("fwd");
   const pendingRef = useRef(0);
-
   const controls = useAnimation();
+  const touchX = useRef<number | null>(null);
 
+  /* ── mobile callbacks ── */
+  const mobileNext = useCallback(() => {
+    if (mobilePageIndex >= totalPages - 1) return;
+    setMobileDir(1);
+    setMobilePageIndex((p) => p + 1);
+  }, [mobilePageIndex, totalPages]);
+
+  const mobilePrev = useCallback(() => {
+    if (mobilePageIndex <= 0) return;
+    setMobileDir(-1);
+    setMobilePageIndex((p) => p - 1);
+  }, [mobilePageIndex]);
+
+  const onMobileTouchStart = useCallback((e: React.TouchEvent) => {
+    mobileTouchX.current = e.touches[0].clientX;
+  }, []);
+  const onMobileTouchEnd = useCallback((e: React.TouchEvent) => {
+    if (mobileTouchX.current === null) return;
+    const dx = e.changedTouches[0].clientX - mobileTouchX.current;
+    mobileTouchX.current = null;
+    if (Math.abs(dx) < 40) return;
+    if (dx < 0) mobileNext(); else mobilePrev();
+  }, [mobileNext, mobilePrev]);
+
+  /* ── desktop callbacks ── */
   const total = spreads.length;
   const canNext = !isFlipping && spreadIndex < total - 1;
   const canPrev = !isFlipping && spreadIndex > 0;
 
-  /* current & adjacent spreads */
-  const cur = spreads[spreadIndex];
-  const next = spreads[Math.min(spreadIndex + 1, total - 1)];
-  const prev = spreads[Math.max(spreadIndex - 1, 0)];
-
-  /* ── FORWARD: right page flips to left ─────────── */
   const goNext = useCallback(async () => {
     if (!canNext) return;
     const target = spreadIndex + 1;
     pendingRef.current = target;
     setFlipDir("fwd");
     setIsFlipping(true);
-
     controls.set({ rotateY: 0 });
-    await controls.start({
-      rotateY: -180,
-      transition: { duration: FLIP_DURATION, ease: EASE },
-    });
-
+    await controls.start({ rotateY: -180, transition: { duration: FLIP_DURATION, ease: EASE } });
     setSpreadIndex(target);
     controls.set({ rotateY: 0 });
     setIsFlipping(false);
   }, [canNext, spreadIndex, controls]);
 
-  /* ── BACKWARD: left page flips to right ─────────── */
   const goPrev = useCallback(async () => {
     if (!canPrev) return;
     const target = spreadIndex - 1;
     pendingRef.current = target;
     setFlipDir("bwd");
     setIsFlipping(true);
-
     controls.set({ rotateY: 0 });
-    await controls.start({
-      rotateY: 180,
-      transition: { duration: FLIP_DURATION, ease: EASE },
-    });
-
+    await controls.start({ rotateY: 180, transition: { duration: FLIP_DURATION, ease: EASE } });
     setSpreadIndex(target);
     controls.set({ rotateY: 0 });
     setIsFlipping(false);
   }, [canPrev, spreadIndex, controls]);
 
-  /* keyboard */
+  /* keyboard (desktop) */
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
+      if (isMobile) return;
       if (e.key === "ArrowRight") goNext();
       if (e.key === "ArrowLeft") goPrev();
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [goNext, goPrev]);
+  }, [goNext, goPrev, isMobile]);
 
-  /* touch swipe */
-  const touchX = useRef<number | null>(null);
-  const onTouchStart = (e: React.TouchEvent) => { touchX.current = e.touches[0].clientX; };
-  const onTouchEnd = (e: React.TouchEvent) => {
+  const onTouchStart = useCallback((e: React.TouchEvent) => { touchX.current = e.touches[0].clientX; }, []);
+  const onTouchEnd = useCallback((e: React.TouchEvent) => {
     if (touchX.current === null) return;
     const dx = e.changedTouches[0].clientX - touchX.current;
     touchX.current = null;
     if (Math.abs(dx) < 50) return;
     if (dx < 0) goNext(); else goPrev();
-  };
+  }, [goNext, goPrev]);
 
-  /*
-    Layout during animation:
-    FORWARD:
-      • Static BG left  → cur[0]          (doesn't move)
-      • Static BG right → next[1]         (revealed beneath the flip)
-      • Flip element    → right half, transform-origin left
-          front  → cur[1]                 (what was on the right)
-          back   → next[0]                (what appears after flip)
-
-    BACKWARD:
-      • Static BG right → cur[1]          (doesn't move)
-      • Static BG left  → prev[0]         (revealed beneath the flip)
-      • Flip element    → left half, transform-origin right
-          front  → cur[0]                 (what was on the left)
-          back   → prev[1]                (what appears after flip)
-  */
-
-  const flipHalf = flipDir === "fwd" ? "right" : "left";
+  /* ── derived desktop values ── */
+  const cur = spreads[spreadIndex];
+  const next = spreads[Math.min(spreadIndex + 1, total - 1)];
+  const prev = spreads[Math.max(spreadIndex - 1, 0)];
   const flipLeft = flipDir === "fwd" ? "50%" : "0";
   const flipOrigin = flipDir === "fwd" ? "left center" : "right center";
-
   const flipFront = flipDir === "fwd" ? cur[1] : cur[0];
   const flipBack  = flipDir === "fwd" ? next[0] : prev[1];
   const bgLeft    = flipDir === "fwd" ? cur[0] : prev[0];
   const bgRight   = flipDir === "fwd" ? next[1] : cur[1];
-
-  /* spine glow color */
   const spineOpacity = isFlipping ? 0.9 : 0.5;
 
+  /* ══════════════════════════════════════════
+     MOBILE RENDER — single page slide
+  ══════════════════════════════════════════ */
+  if (isMobile) {
+    const page = allPages[mobilePageIndex];
+    const canMobileNext = mobilePageIndex < totalPages - 1;
+    const canMobilePrev = mobilePageIndex > 0;
+
+    return (
+      <div className="flex flex-col items-center w-full">
+        <div
+          className="relative"
+          onTouchStart={onMobileTouchStart}
+          onTouchEnd={onMobileTouchEnd}
+        >
+          <div className="w-full h-[2px] mb-1"
+            style={{ background: "linear-gradient(90deg,transparent,rgba(255,46,46,0.4),transparent)" }} />
+
+          <div
+            className="relative overflow-hidden"
+            style={{
+              width: "min(400px, 92vw)",
+              height: "min(560px, 135vw)",
+              boxShadow: "0 24px 70px rgba(0,0,0,0.85), 0 0 0 1px rgba(255,255,255,0.05)",
+            }}
+          >
+            <div className="absolute left-0 right-0 top-0 h-[5px] pointer-events-none z-10"
+              style={{ background: "linear-gradient(to bottom,rgba(255,255,255,0.06),transparent)" }} />
+            <div className="absolute left-0 right-0 bottom-0 h-[5px] pointer-events-none z-10"
+              style={{ background: "linear-gradient(to top,rgba(0,0,0,0.45),transparent)" }} />
+
+            <AnimatePresence initial={false} custom={mobileDir} mode="wait">
+              <motion.div
+                key={mobilePageIndex}
+                custom={mobileDir}
+                variants={mobileVariants}
+                initial="enter"
+                animate="center"
+                exit="exit"
+                transition={{ duration: 0.35, ease: [0.22, 0.61, 0.36, 1] }}
+                className="absolute inset-0"
+              >
+                <Page data={page} side="L" />
+              </motion.div>
+            </AnimatePresence>
+          </div>
+
+          <div className="w-full h-[2px] mt-1"
+            style={{ background: "linear-gradient(90deg,transparent,rgba(255,46,46,0.4),transparent)" }} />
+        </div>
+
+        {/* mobile controls */}
+        <div className="flex items-center gap-6 mt-6">
+          <button
+            onClick={mobilePrev}
+            disabled={!canMobilePrev}
+            className="flex items-center gap-1 text-[11px] tracking-widest uppercase font-sans transition-all duration-300 disabled:opacity-20 disabled:cursor-not-allowed"
+            style={{ color: canMobilePrev ? "#ff2e2e" : "rgba(245,240,232,0.3)" }}
+          >
+            <ChevronLeft size={14} />
+            Prev
+          </button>
+
+          <div className="flex items-center gap-[5px]">
+            {allPages.map((_, i) => (
+              <button
+                key={i}
+                onClick={() => { setMobileDir(i > mobilePageIndex ? 1 : -1); setMobilePageIndex(i); }}
+                style={{
+                  width: i === mobilePageIndex ? 18 : 5,
+                  height: 2,
+                  background: i === mobilePageIndex ? "#ff2e2e" : "rgba(255,255,255,0.15)",
+                  border: "none",
+                  padding: 0,
+                  cursor: "pointer",
+                  transition: "width 0.3s, background 0.3s",
+                }}
+              />
+            ))}
+          </div>
+
+          <button
+            onClick={mobileNext}
+            disabled={!canMobileNext}
+            className="flex items-center gap-1 text-[11px] tracking-widest uppercase font-sans transition-all duration-300 disabled:opacity-20 disabled:cursor-not-allowed"
+            style={{ color: canMobileNext ? "#ff2e2e" : "rgba(245,240,232,0.3)" }}
+          >
+            Next
+            <ChevronRight size={14} />
+          </button>
+        </div>
+
+        <p className="mt-3 text-[9px] tracking-[0.35em] font-sans uppercase"
+          style={{ color: "rgba(245,240,232,0.18)" }}>
+          {mobilePageIndex + 1} / {totalPages} — swipe to turn
+        </p>
+      </div>
+    );
+  }
+
+  /* ══════════════════════════════════════════
+     DESKTOP RENDER — two-page book spread
+  ══════════════════════════════════════════ */
   return (
     <div className="flex flex-col items-center w-full">
 
@@ -419,12 +539,10 @@ export function FlipMenu() {
             boxShadow: "0 40px 100px rgba(0,0,0,0.85), 0 0 0 1px rgba(255,255,255,0.04)",
           }}
         >
-          {/* ── STATIC BACKGROUND PAGES ──────────────────── */}
           {/* Left BG */}
           <div className="absolute top-0 left-0 h-full overflow-hidden"
             style={{ width: "50%", zIndex: 1 }}>
             <Page data={isFlipping ? bgLeft : cur[0]} side="L" />
-            {/* inner shadow right edge */}
             <div className="absolute inset-y-0 right-0 w-10 pointer-events-none"
               style={{ background: "linear-gradient(to left,rgba(0,0,0,0.45),transparent)", zIndex: 2 }} />
           </div>
@@ -433,12 +551,11 @@ export function FlipMenu() {
           <div className="absolute top-0 right-0 h-full overflow-hidden"
             style={{ width: "50%", zIndex: 1 }}>
             <Page data={isFlipping ? bgRight : cur[1]} side="R" />
-            {/* inner shadow left edge */}
             <div className="absolute inset-y-0 left-0 w-10 pointer-events-none"
               style={{ background: "linear-gradient(to right,rgba(0,0,0,0.45),transparent)", zIndex: 2 }} />
           </div>
 
-          {/* ── SPINE ────────────────────────────────────── */}
+          {/* Spine */}
           <div className="absolute top-0 bottom-0 pointer-events-none"
             style={{
               left: "50%",
@@ -450,80 +567,54 @@ export function FlipMenu() {
               transition: "opacity 0.4s",
             }} />
 
-          {/* ── PAGE THICKNESS ILLUSION (top & bottom edges) ── */}
+          {/* Page thickness illusion */}
           <div className="absolute left-0 right-0 top-0 h-[6px] pointer-events-none"
             style={{ background: "linear-gradient(to bottom,rgba(255,255,255,0.05),transparent)", zIndex: 5 }} />
           <div className="absolute left-0 right-0 bottom-0 h-[6px] pointer-events-none"
             style={{ background: "linear-gradient(to top,rgba(0,0,0,0.4),transparent)", zIndex: 5 }} />
 
-          {/* ── ANIMATED FLIP PAGE ───────────────────────── */}
+          {/* Animated flip page */}
           {isFlipping && (
             <div
               className="absolute top-0 h-full overflow-visible"
-              style={{
-                width: "50%",
-                left: flipLeft,
-                zIndex: 15,
-                transformStyle: "preserve-3d",
-              }}
+              style={{ width: "50%", left: flipLeft, zIndex: 15, transformStyle: "preserve-3d" }}
             >
               <motion.div
                 animate={controls}
                 style={{
-                  width: "100%",
-                  height: "100%",
+                  width: "100%", height: "100%",
                   transformStyle: "preserve-3d",
                   transformOrigin: flipOrigin,
                   position: "relative",
                 }}
               >
-                {/* ── FRONT FACE ── */}
-                <div
-                  className="absolute inset-0 overflow-hidden"
-                  style={{
-                    backfaceVisibility: "hidden",
-                    WebkitBackfaceVisibility: "hidden",
-                  }}
-                >
+                {/* Front face */}
+                <div className="absolute inset-0 overflow-hidden"
+                  style={{ backfaceVisibility: "hidden", WebkitBackfaceVisibility: "hidden" }}>
                   <Page data={flipFront} side={flipDir === "fwd" ? "R" : "L"} />
-
-                  {/* Shadow sweeping inward from the folding edge */}
                   <div className="absolute inset-y-0 pointer-events-none"
                     style={{
-                      [flipDir === "fwd" ? "left" : "right"]: 0,
-                      width: "55%",
+                      [flipDir === "fwd" ? "left" : "right"]: 0, width: "55%",
                       background: flipDir === "fwd"
                         ? "linear-gradient(to left,rgba(0,0,0,0.7),transparent)"
                         : "linear-gradient(to right,rgba(0,0,0,0.7),transparent)",
                     }} />
-
-                  {/* Sheen highlight on the outer edge */}
                   <div className="absolute inset-y-0 pointer-events-none"
                     style={{
-                      [flipDir === "fwd" ? "right" : "left"]: 0,
-                      width: "18px",
+                      [flipDir === "fwd" ? "right" : "left"]: 0, width: "18px",
                       background: flipDir === "fwd"
                         ? "linear-gradient(to right,transparent,rgba(255,255,255,0.06))"
                         : "linear-gradient(to left,transparent,rgba(255,255,255,0.06))",
                     }} />
                 </div>
 
-                {/* ── BACK FACE ── */}
-                <div
-                  className="absolute inset-0 overflow-hidden"
-                  style={{
-                    backfaceVisibility: "hidden",
-                    WebkitBackfaceVisibility: "hidden",
-                    transform: "rotateY(180deg)",
-                  }}
-                >
+                {/* Back face */}
+                <div className="absolute inset-0 overflow-hidden"
+                  style={{ backfaceVisibility: "hidden", WebkitBackfaceVisibility: "hidden", transform: "rotateY(180deg)" }}>
                   <Page data={flipBack} side={flipDir === "fwd" ? "L" : "R"} />
-
-                  {/* Shadow on the newly-revealed side */}
                   <div className="absolute inset-y-0 pointer-events-none"
                     style={{
-                      [flipDir === "fwd" ? "right" : "left"]: 0,
-                      width: "55%",
+                      [flipDir === "fwd" ? "right" : "left"]: 0, width: "55%",
                       background: flipDir === "fwd"
                         ? "linear-gradient(to right,rgba(0,0,0,0.55),transparent)"
                         : "linear-gradient(to left,rgba(0,0,0,0.55),transparent)",
@@ -533,27 +624,19 @@ export function FlipMenu() {
             </div>
           )}
 
-          {/* ── CORNER FLIP ZONES (click edges) ───────── */}
+          {/* Corner flip zones */}
           {!isFlipping && canNext && (
-            <button
-              onClick={goNext}
-              data-testid="flip-corner-next"
-              aria-label="Next page"
+            <button onClick={goNext} data-testid="flip-corner-next" aria-label="Next page"
               className="absolute bottom-0 right-0 z-30 group"
-              style={{ width: 60, height: 60, background: "transparent", border: "none", cursor: "pointer" }}
-            >
+              style={{ width: 60, height: 60, background: "transparent", border: "none", cursor: "pointer" }}>
               <div className="absolute bottom-0 right-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
                 style={{ borderLeft: "42px solid transparent", borderBottom: "42px solid rgba(255,46,46,0.18)" }} />
             </button>
           )}
           {!isFlipping && canPrev && (
-            <button
-              onClick={goPrev}
-              data-testid="flip-corner-prev"
-              aria-label="Previous page"
+            <button onClick={goPrev} data-testid="flip-corner-prev" aria-label="Previous page"
               className="absolute bottom-0 left-0 z-30 group"
-              style={{ width: 60, height: 60, background: "transparent", border: "none", cursor: "pointer" }}
-            >
+              style={{ width: 60, height: 60, background: "transparent", border: "none", cursor: "pointer" }}>
               <div className="absolute bottom-0 left-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
                 style={{ borderRight: "42px solid transparent", borderBottom: "42px solid rgba(255,46,46,0.18)" }} />
             </button>
@@ -561,12 +644,10 @@ export function FlipMenu() {
         </div>
       </div>
 
-      {/* ── CONTROLS ── */}
+      {/* Desktop controls */}
       <div className="flex items-center gap-8 mt-9">
         <button
-          onClick={goPrev}
-          disabled={!canPrev}
-          data-testid="flip-prev"
+          onClick={goPrev} disabled={!canPrev} data-testid="flip-prev"
           className="group flex items-center gap-2 text-[10px] tracking-widest uppercase font-sans transition-all duration-300 disabled:opacity-20 disabled:cursor-not-allowed"
           style={{ color: "rgba(245,240,232,0.55)" }}
           onMouseEnter={(e) => { if (canPrev) (e.currentTarget as HTMLElement).style.color = "#ff2e2e"; }}
@@ -576,20 +657,15 @@ export function FlipMenu() {
           Prev
         </button>
 
-        {/* Spread indicators */}
         <div className="flex items-center gap-[6px]">
           {spreads.map((_, i) => (
-            <button
-              key={i}
+            <button key={i}
               onClick={() => { if (!isFlipping && i !== spreadIndex) setSpreadIndex(i); }}
               data-testid={`spread-dot-${i}`}
               style={{
-                width: i === spreadIndex ? 22 : 6,
-                height: 2,
+                width: i === spreadIndex ? 22 : 6, height: 2,
                 background: i === spreadIndex ? "#ff2e2e" : "rgba(255,255,255,0.12)",
-                border: "none",
-                padding: 0,
-                cursor: "pointer",
+                border: "none", padding: 0, cursor: "pointer",
                 transition: "width 0.3s, background 0.3s",
               }}
             />
@@ -597,9 +673,7 @@ export function FlipMenu() {
         </div>
 
         <button
-          onClick={goNext}
-          disabled={!canNext}
-          data-testid="flip-next"
+          onClick={goNext} disabled={!canNext} data-testid="flip-next"
           className="group flex items-center gap-2 text-[10px] tracking-widest uppercase font-sans transition-all duration-300 disabled:opacity-20 disabled:cursor-not-allowed"
           style={{ color: "rgba(245,240,232,0.55)" }}
           onMouseEnter={(e) => { if (canNext) (e.currentTarget as HTMLElement).style.color = "#ff2e2e"; }}
