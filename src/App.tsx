@@ -2,13 +2,18 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
+import emailjs from "@emailjs/browser";
 import { motion, type Variants } from "framer-motion";
 import { Star } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Form, FormControl, FormField, FormItem, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { FlipMenu } from "@/components/FlipMenu";
+
+const EMAILJS_SERVICE_ID = import.meta.env.VITE_EMAILJS_SERVICE_ID as string | undefined;
+const EMAILJS_TEMPLATE_ID = import.meta.env.VITE_EMAILJS_TEMPLATE_ID as string | undefined;
+const EMAILJS_PUBLIC_KEY = import.meta.env.VITE_EMAILJS_PUBLIC_KEY as string | undefined;
 
 const navLinks = [
   { name: "About", href: "#about" },
@@ -16,7 +21,6 @@ const navLinks = [
   { name: "Gallery", href: "#gallery" },
   { name: "Reviews", href: "#reviews" },
 ];
-
 
 const reviews = [
   {
@@ -44,10 +48,13 @@ const gallery = [
 
 const formSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters."),
+  email: z.string().email("Please enter a valid email address."),
   phone: z.string().min(10, "Phone must be at least 10 digits."),
   guests: z.coerce.number().min(1, "At least 1 guest.").max(10, "Maximum 10 guests."),
   date: z.string().min(1, "Please select a date."),
 });
+
+type FormValues = z.infer<typeof formSchema>;
 
 const fadeInUp: Variants = {
   hidden: { opacity: 0, y: 40 },
@@ -65,37 +72,68 @@ const staggerContainer: Variants = {
 function App() {
   const { toast } = useToast();
   const [isNavScrolled, setIsNavScrolled] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Handle nav scroll effect
   if (typeof window !== "undefined") {
     window.addEventListener("scroll", () => {
       setIsNavScrolled(window.scrollY > 50);
     });
   }
 
-  const form = useForm<z.infer<typeof formSchema>>({
+  const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: "",
+      email: "",
       phone: "",
       guests: 2,
       date: "",
     },
   });
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
-    toast({
-      title: "Reservation Confirmed",
-      description: "Your table has been reserved. We'll see you soon.",
-    });
-    form.reset();
+  async function onSubmit(values: FormValues) {
+    setIsSubmitting(true);
+    try {
+      if (EMAILJS_SERVICE_ID && EMAILJS_TEMPLATE_ID && EMAILJS_PUBLIC_KEY) {
+        await emailjs.send(
+          EMAILJS_SERVICE_ID,
+          EMAILJS_TEMPLATE_ID,
+          {
+            guest_name: values.name,
+            guest_email: values.email,
+            guest_phone: values.phone,
+            guest_count: values.guests,
+            reservation_date: new Date(values.date).toLocaleDateString("en-US", {
+              weekday: "long",
+              year: "numeric",
+              month: "long",
+              day: "numeric",
+            }),
+          },
+          EMAILJS_PUBLIC_KEY
+        );
+      }
+      toast({
+        title: "Reservation Confirmed",
+        description: EMAILJS_PUBLIC_KEY
+          ? `A confirmation has been sent to ${values.email}.`
+          : "Your table has been reserved. We'll see you soon.",
+      });
+      form.reset();
+    } catch {
+      toast({
+        title: "Something went wrong",
+        description: "We couldn't send your confirmation email. Please call us directly.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   const scrollTo = (id: string) => {
     const el = document.getElementById(id);
-    if (el) {
-      el.scrollIntoView({ behavior: "smooth" });
-    }
+    if (el) el.scrollIntoView({ behavior: "smooth" });
   };
 
   return (
@@ -107,10 +145,10 @@ function App() {
             <img src="/da-spot-logo.jpeg" alt="DA SPOT Logo" className="w-10 h-10 object-cover rounded-full border border-border" />
             <span className="font-serif font-bold text-xl tracking-widest text-primary-foreground">DA SPOT</span>
           </div>
-          
+
           <div className="hidden md:flex items-center gap-8">
             {navLinks.map((link) => (
-              <button 
+              <button
                 key={link.name}
                 onClick={() => scrollTo(link.href.substring(1))}
                 className="text-sm tracking-widest uppercase text-muted-foreground hover:text-primary transition-colors relative group"
@@ -119,7 +157,7 @@ function App() {
                 <span className="absolute -bottom-1 left-0 w-0 h-px bg-primary transition-all group-hover:w-full"></span>
               </button>
             ))}
-            <button 
+            <button
               onClick={() => scrollTo('reserve')}
               className="px-6 py-2 border border-primary text-primary text-sm tracking-widest uppercase hover:bg-primary hover:text-white transition-all duration-300"
             >
@@ -132,7 +170,7 @@ function App() {
       {/* HERO SECTION */}
       <section className="relative h-screen flex items-center justify-center overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,46,46,0.15)_0%,transparent_50%)] pointer-events-none"></div>
-        <motion.div 
+        <motion.div
           variants={staggerContainer}
           initial="hidden"
           animate="visible"
@@ -142,24 +180,24 @@ function App() {
             <div className="absolute inset-0 rounded-full bg-primary/20 blur-xl group-hover:bg-primary/40 transition-all duration-700"></div>
             <img src="/da-spot-logo.jpeg" alt="DA SPOT" className="w-48 h-48 md:w-56 md:h-56 object-cover rounded-full border border-white/10 shadow-2xl relative z-10" />
           </motion.div>
-          
+
           <motion.h1 variants={fadeInUp} className="font-serif text-6xl md:text-8xl lg:text-9xl font-bold tracking-[0.15em] mb-4">
             DA SPOT
           </motion.h1>
-          
+
           <motion.div variants={fadeInUp} className="flex items-center gap-6 mb-6">
             <span className="w-12 h-px bg-border"></span>
             <span className="text-muted-foreground tracking-[0.3em] text-xs uppercase">ESTD 2024</span>
             <span className="w-12 h-px bg-border"></span>
           </motion.div>
-          
+
           <motion.p variants={fadeInUp} className="font-serif italic text-xl md:text-2xl text-muted-foreground mb-10">
             Luxury Dining Experience
           </motion.p>
-          
+
           <motion.div variants={fadeInUp} className="w-[60px] h-px bg-primary mb-10"></motion.div>
-          
-          <motion.button 
+
+          <motion.button
             variants={fadeInUp}
             onClick={() => scrollTo('reserve')}
             className="px-10 py-4 bg-primary text-white tracking-widest uppercase text-sm font-medium hover:bg-red-600 transition-colors shadow-[0_0_20px_rgba(255,46,46,0.3)]"
@@ -171,7 +209,7 @@ function App() {
 
       {/* ABOUT SECTION */}
       <section id="about" className="py-32 px-6">
-        <motion.div 
+        <motion.div
           initial="hidden"
           whileInView="visible"
           viewport={{ once: true, margin: "-100px" }}
@@ -183,7 +221,7 @@ function App() {
           <p className="text-lg md:text-xl text-muted-foreground leading-relaxed mb-16">
             Nestled in the heart of the city, DA SPOT was born from a singular obsession — the pursuit of extraordinary flavor. Since 2024, we have crafted each dish with intention, precision, and passion. A dining experience unlike any other awaits you.
           </p>
-          
+
           <div className="grid grid-cols-3 gap-8 border-t border-border pt-16">
             <div>
               <div className="text-4xl md:text-5xl font-serif text-primary mb-2">500+</div>
@@ -225,7 +263,7 @@ function App() {
 
       {/* GALLERY SECTION */}
       <section id="gallery" className="py-32 px-6">
-        <motion.div 
+        <motion.div
           initial="hidden"
           whileInView="visible"
           viewport={{ once: true }}
@@ -239,8 +277,8 @@ function App() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {gallery.map((img, idx) => (
-              <motion.div 
-                key={idx} 
+              <motion.div
+                key={idx}
                 variants={fadeInUp}
                 className="aspect-square overflow-hidden border border-transparent hover:border-primary/50 transition-colors duration-300 group"
               >
@@ -253,7 +291,7 @@ function App() {
 
       {/* REVIEWS SECTION */}
       <section id="reviews" className="py-32 bg-[#111] px-6">
-        <motion.div 
+        <motion.div
           initial="hidden"
           whileInView="visible"
           viewport={{ once: true }}
@@ -267,8 +305,8 @@ function App() {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {reviews.map((review, idx) => (
-              <motion.div 
-                key={idx} 
+              <motion.div
+                key={idx}
                 variants={fadeInUp}
                 className="bg-background border border-white/[0.07] p-8 flex flex-col items-center text-center group hover:border-primary/30 transition-colors"
               >
@@ -290,7 +328,7 @@ function App() {
 
       {/* RESERVATION SECTION */}
       <section id="reserve" className="py-32 px-6">
-        <motion.div 
+        <motion.div
           initial="hidden"
           whileInView="visible"
           viewport={{ once: true }}
@@ -300,6 +338,9 @@ function App() {
           <div className="text-center mb-12">
             <p className="text-primary tracking-[0.3em] text-xs font-bold mb-4">— JOIN US —</p>
             <h2 className="font-serif text-4xl md:text-5xl font-bold">Reserve Your Table</h2>
+            <p className="text-muted-foreground text-sm mt-4">
+              A confirmation will be sent to your email.
+            </p>
           </div>
 
           <Form {...form}>
@@ -310,9 +351,9 @@ function App() {
                 render={({ field }) => (
                   <FormItem>
                     <FormControl>
-                      <Input 
-                        placeholder="Full Name" 
-                        {...field} 
+                      <Input
+                        placeholder="Full Name"
+                        {...field}
                         className="bg-[#111] border-0 border-b border-border rounded-none px-0 py-6 text-lg focus-visible:ring-0 focus-visible:border-primary placeholder:text-muted-foreground/50 transition-colors"
                       />
                     </FormControl>
@@ -320,17 +361,35 @@ function App() {
                   </FormItem>
                 )}
               />
-              
+
+              <FormField
+                control={form.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormControl>
+                      <Input
+                        placeholder="Email Address"
+                        type="email"
+                        {...field}
+                        className="bg-[#111] border-0 border-b border-border rounded-none px-0 py-6 text-lg focus-visible:ring-0 focus-visible:border-primary placeholder:text-muted-foreground/50 transition-colors"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
               <FormField
                 control={form.control}
                 name="phone"
                 render={({ field }) => (
                   <FormItem>
                     <FormControl>
-                      <Input 
-                        placeholder="Phone Number" 
+                      <Input
+                        placeholder="Phone Number"
                         type="tel"
-                        {...field} 
+                        {...field}
                         className="bg-[#111] border-0 border-b border-border rounded-none px-0 py-6 text-lg focus-visible:ring-0 focus-visible:border-primary placeholder:text-muted-foreground/50 transition-colors"
                       />
                     </FormControl>
@@ -346,12 +405,12 @@ function App() {
                   render={({ field }) => (
                     <FormItem>
                       <FormControl>
-                        <Input 
-                          placeholder="Number of Guests" 
+                        <Input
+                          placeholder="Guests"
                           type="number"
                           min="1"
                           max="10"
-                          {...field} 
+                          {...field}
                           className="bg-[#111] border-0 border-b border-border rounded-none px-0 py-6 text-lg focus-visible:ring-0 focus-visible:border-primary placeholder:text-muted-foreground/50 transition-colors"
                         />
                       </FormControl>
@@ -365,9 +424,10 @@ function App() {
                   render={({ field }) => (
                     <FormItem>
                       <FormControl>
-                        <Input 
+                        <Input
                           type="date"
-                          {...field} 
+                          {...field}
+                          min={new Date().toISOString().split("T")[0]}
                           className="bg-[#111] border-0 border-b border-border rounded-none px-0 py-6 text-lg focus-visible:ring-0 focus-visible:border-primary text-foreground transition-colors [color-scheme:dark]"
                         />
                       </FormControl>
@@ -377,10 +437,14 @@ function App() {
                 />
               </div>
 
-              <Button type="submit" className="w-full py-8 mt-8 bg-primary text-white tracking-widest uppercase text-sm font-medium hover:bg-red-600 transition-colors">
-                Confirm Reservation
+              <Button
+                type="submit"
+                disabled={isSubmitting}
+                className="w-full py-8 mt-8 bg-primary text-white tracking-widest uppercase text-sm font-medium hover:bg-red-600 transition-colors disabled:opacity-60"
+              >
+                {isSubmitting ? "Sending…" : "Confirm Reservation"}
               </Button>
-              
+
               <p className="text-center text-muted-foreground text-sm mt-6">
                 Questions? Call us at <span className="text-primary">+91 98765 43210</span>
               </p>
@@ -395,10 +459,10 @@ function App() {
           <img src="/da-spot-logo.jpeg" alt="DA SPOT Logo" className="w-16 h-16 object-cover rounded-full mx-auto mb-6 opacity-80 grayscale" />
           <h2 className="font-serif font-bold text-2xl tracking-[0.2em] mb-2">DA SPOT</h2>
           <p className="text-muted-foreground tracking-[0.3em] text-xs mb-10">ESTD 2024</p>
-          
+
           <div className="flex flex-wrap justify-center gap-6 mb-10">
             {navLinks.map((link) => (
-              <button 
+              <button
                 key={link.name}
                 onClick={() => scrollTo(link.href.substring(1))}
                 className="text-xs tracking-widest uppercase text-muted-foreground hover:text-primary transition-colors"
@@ -407,9 +471,9 @@ function App() {
               </button>
             ))}
           </div>
-          
+
           <div className="w-24 h-px bg-primary/50 mx-auto mb-10"></div>
-          
+
           <p className="text-[10px] text-muted-foreground/50 tracking-widest uppercase">
             © 2024 DA SPOT. All Rights Reserved.
           </p>
